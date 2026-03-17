@@ -1,10 +1,14 @@
 import { handle } from 'hono/vercel'
-// Ensure this path is exactly correct relative to api/index.ts
 import app from '../src/index'
+
+console.log('1. imports loaded')
 
 export const config = { runtime: 'nodejs' }
 
-// Re-exporting or explicitly using the handle
+console.log('2. config set')
+
 const handler = handle(app)
+
+console.log('3. handler created')
 
 export default handler

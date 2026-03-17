@@ -52996,8 +52996,11 @@ app.get("/scalar", Scalar({ url: "/doc", theme: "purple" }));
 var src_default2 = app;
 
 // api/index.ts
+console.log("1. imports loaded");
 var config2 = { runtime: "nodejs" };
+console.log("2. config set");
 var handler = handle(src_default2);
+console.log("3. handler created");
 var api_default = handler;
 export {
   api_default as default,
