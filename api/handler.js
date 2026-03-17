@@ -52994,10 +52994,12 @@ var src_default2 = app;
 var config2 = { runtime: "nodejs" };
 async function handler(req, res) {
   const url2 = `https://${req.headers.host}${req.url}`;
+  const isBodyMethod = !["GET", "HEAD"].includes(req.method);
   const request = new Request(url2, {
     method: req.method,
     headers: req.headers,
-    body: ["GET", "HEAD"].includes(req.method) ? undefined : req
+    body: isBodyMethod ? req : undefined,
+    ...isBodyMethod ? { duplex: "half" } : {}
   });
   const response = await src_default2.fetch(request);
   res.status(response.status);
