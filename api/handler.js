@@ -15240,11 +15240,6 @@ var require_main3 = __commonJS((exports) => {
   } });
 });
 
-// node_modules/hono/dist/adapter/vercel/handler.js
-var handle = (app) => (req) => {
-  return app.fetch(req);
-};
-
 // node_modules/@asteasolutions/zod-to-openapi/dist/index.cjs
 function __rest(s, e) {
   var t = {};
@@ -52996,13 +52991,20 @@ app.get("/scalar", Scalar({ url: "/doc", theme: "purple" }));
 var src_default2 = app;
 
 // api/index.ts
-console.log("1. imports loaded");
 var config2 = { runtime: "nodejs" };
-console.log("2. config set");
-var handler = handle(src_default2);
-console.log("3. handler created");
-var api_default = handler;
+async function handler(req, res) {
+  const url2 = `https://${req.headers.host}${req.url}`;
+  const request = new Request(url2, {
+    method: req.method,
+    headers: req.headers,
+    body: ["GET", "HEAD"].includes(req.method) ? undefined : req
+  });
+  const response = await src_default2.fetch(request);
+  res.status(response.status);
+  response.headers.forEach((value, key) => res.setHeader(key, value));
+  res.end(await response.text());
+}
 export {
-  api_default as default,
+  handler as default,
   config2 as config
 };
