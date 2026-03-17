@@ -119,7 +119,7 @@ auth.openapi(
             setCookie(c, "token", token, {
                 httpOnly: true,
                 secure: true,
-                sameSite: "Lax",
+                sameSite: "None",
                 maxAge: 60 * 60 * 24 * 7
             })
             return c.json({ message: "Login successful", user }, 200)
