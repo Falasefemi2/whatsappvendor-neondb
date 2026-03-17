@@ -1,6 +1,6 @@
 import { handle } from 'hono/vercel'
 // Ensure this path is exactly correct relative to api/index.ts
-import app from '../src/index.js'
+import app from '../src/index.js.js.js'
 
 export const config = { runtime: 'nodejs' }
 
