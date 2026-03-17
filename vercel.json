@@ -1,12 +1,11 @@
 {
   "version": 2,
   "installCommand": "bun install",
-  "buildCommand": "bun build ./api/index.ts --outdir ./dist --target node",
-  "outputDirectory": "dist",
+  "buildCommand": "bun build ./api/index.ts --outdir ./api/dist --target node",
   "functions": {
-    "dist/index.js": {
+    "api/dist/index.js": {
       "memory": 1024
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/dist/index" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/dist/index" }]
 }
