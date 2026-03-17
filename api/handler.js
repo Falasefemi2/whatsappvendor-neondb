@@ -33996,6 +33996,13 @@ params: ${params}`);
   }
 }
 
+class TransactionRollbackError extends DrizzleError {
+  static [entityKind] = "TransactionRollbackError";
+  constructor() {
+    super({ message: "Rollback" });
+  }
+}
+
 // node_modules/drizzle-orm/logger.js
 class ConsoleLogWriter {
   static [entityKind] = "ConsoleLogWriter";
@@ -37826,6 +37833,34 @@ class PgSession {
   async count(sql2, token) {
     const res = await this.execute(sql2, token);
     return Number(res[0]["count"]);
+  }
+}
+
+class PgTransaction extends PgDatabase {
+  constructor(dialect, session, schema, nestedIndex = 0) {
+    super(dialect, session, schema);
+    this.schema = schema;
+    this.nestedIndex = nestedIndex;
+  }
+  static [entityKind] = "PgTransaction";
+  rollback() {
+    throw new TransactionRollbackError;
+  }
+  getTransactionConfigSQL(config2) {
+    const chunks = [];
+    if (config2.isolationLevel) {
+      chunks.push(`isolation level ${config2.isolationLevel}`);
+    }
+    if (config2.accessMode) {
+      chunks.push(config2.accessMode);
+    }
+    if (typeof config2.deferrable === "boolean") {
+      chunks.push(config2.deferrable ? "deferrable" : "not deferrable");
+    }
+    return sql.raw(chunks.join(" "));
+  }
+  setTransaction(config2) {
+    return this.session.execute(sql`set transaction ${this.getTransactionConfigSQL(config2)}`);
   }
 }
 
@@ -42779,6 +42814,7 @@ var Un = class Un2 extends go.Pool {
   }
 };
 a(Un, "NeonPool");
+var Mn = Un;
 Fe();
 var ct = Se(ot());
 var export_DatabaseError = ct.DatabaseError;
@@ -42800,189 +42836,211 @@ buffer/index.js:
    *)
 */
 
-// node_modules/drizzle-orm/neon-http/session.js
-var rawQueryConfig = {
-  arrayMode: false,
-  fullResults: true
-};
-var queryConfig = {
-  arrayMode: true,
-  fullResults: true
-};
-
-class NeonHttpPreparedQuery extends PgPreparedQuery {
-  constructor(client, query, logger, cache, queryMetadata, cacheConfig, fields, _isResponseInArrayMode, customResultMapper) {
-    super(query, cache, queryMetadata, cacheConfig);
+// node_modules/drizzle-orm/neon-serverless/session.js
+class NeonPreparedQuery extends PgPreparedQuery {
+  constructor(client, queryString, params, logger, cache, queryMetadata, cacheConfig, fields, name, _isResponseInArrayMode, customResultMapper) {
+    super({ sql: queryString, params }, cache, queryMetadata, cacheConfig);
     this.client = client;
+    this.params = params;
     this.logger = logger;
     this.fields = fields;
     this._isResponseInArrayMode = _isResponseInArrayMode;
     this.customResultMapper = customResultMapper;
-    this.clientQuery = client.query ?? client;
+    this.rawQueryConfig = {
+      name,
+      text: queryString,
+      types: {
+        getTypeParser: (typeId, format) => {
+          if (typeId === export_types.builtins.TIMESTAMPTZ) {
+            return (val) => val;
+          }
+          if (typeId === export_types.builtins.TIMESTAMP) {
+            return (val) => val;
+          }
+          if (typeId === export_types.builtins.DATE) {
+            return (val) => val;
+          }
+          if (typeId === export_types.builtins.INTERVAL) {
+            return (val) => val;
+          }
+          if (typeId === 1231) {
+            return (val) => val;
+          }
+          if (typeId === 1115) {
+            return (val) => val;
+          }
+          if (typeId === 1185) {
+            return (val) => val;
+          }
+          if (typeId === 1187) {
+            return (val) => val;
+          }
+          if (typeId === 1182) {
+            return (val) => val;
+          }
+          return export_types.getTypeParser(typeId, format);
+        }
+      }
+    };
+    this.queryConfig = {
+      name,
+      text: queryString,
+      rowMode: "array",
+      types: {
+        getTypeParser: (typeId, format) => {
+          if (typeId === export_types.builtins.TIMESTAMPTZ) {
+            return (val) => val;
+          }
+          if (typeId === export_types.builtins.TIMESTAMP) {
+            return (val) => val;
+          }
+          if (typeId === export_types.builtins.DATE) {
+            return (val) => val;
+          }
+          if (typeId === export_types.builtins.INTERVAL) {
+            return (val) => val;
+          }
+          if (typeId === 1231) {
+            return (val) => val;
+          }
+          if (typeId === 1115) {
+            return (val) => val;
+          }
+          if (typeId === 1185) {
+            return (val) => val;
+          }
+          if (typeId === 1187) {
+            return (val) => val;
+          }
+          if (typeId === 1182) {
+            return (val) => val;
+          }
+          return export_types.getTypeParser(typeId, format);
+        }
+      }
+    };
   }
-  static [entityKind] = "NeonHttpPreparedQuery";
-  clientQuery;
-  async execute(placeholderValues = {}, token = this.authToken) {
-    const params = fillPlaceholders(this.query.params, placeholderValues);
-    this.logger.logQuery(this.query.sql, params);
-    const { fields, clientQuery, query, customResultMapper } = this;
+  static [entityKind] = "NeonPreparedQuery";
+  rawQueryConfig;
+  queryConfig;
+  async execute(placeholderValues = {}) {
+    const params = fillPlaceholders(this.params, placeholderValues);
+    this.logger.logQuery(this.rawQueryConfig.text, params);
+    const { fields, client, rawQueryConfig: rawQuery, queryConfig: query, joinsNotNullableMap, customResultMapper } = this;
     if (!fields && !customResultMapper) {
-      return this.queryWithCache(query.sql, params, async () => {
-        return clientQuery(query.sql, params, token === undefined ? rawQueryConfig : {
-          ...rawQueryConfig,
-          authToken: token
-        });
+      return await this.queryWithCache(rawQuery.text, params, async () => {
+        return await client.query(rawQuery, params);
       });
     }
-    const result = await this.queryWithCache(query.sql, params, async () => {
-      return await clientQuery(query.sql, params, token === undefined ? queryConfig : {
-        ...queryConfig,
-        authToken: token
-      });
+    const result = await this.queryWithCache(query.text, params, async () => {
+      return await client.query(query, params);
     });
-    return this.mapResult(result);
-  }
-  mapResult(result) {
-    if (!this.fields && !this.customResultMapper) {
-      return result;
-    }
-    const rows = result.rows;
-    if (this.customResultMapper) {
-      return this.customResultMapper(rows);
-    }
-    return rows.map((row) => mapResultRow(this.fields, row, this.joinsNotNullableMap));
+    return customResultMapper ? customResultMapper(result.rows) : result.rows.map((row) => mapResultRow(fields, row, joinsNotNullableMap));
   }
   all(placeholderValues = {}) {
-    const params = fillPlaceholders(this.query.params, placeholderValues);
-    this.logger.logQuery(this.query.sql, params);
-    return this.clientQuery(this.query.sql, params, this.authToken === undefined ? rawQueryConfig : {
-      ...rawQueryConfig,
-      authToken: this.authToken
+    const params = fillPlaceholders(this.params, placeholderValues);
+    this.logger.logQuery(this.rawQueryConfig.text, params);
+    return this.queryWithCache(this.rawQueryConfig.text, params, async () => {
+      return await this.client.query(this.rawQueryConfig, params);
     }).then((result) => result.rows);
   }
-  values(placeholderValues = {}, token) {
-    const params = fillPlaceholders(this.query.params, placeholderValues);
-    this.logger.logQuery(this.query.sql, params);
-    return this.clientQuery(this.query.sql, params, { arrayMode: true, fullResults: true, authToken: token }).then((result) => result.rows);
+  values(placeholderValues = {}) {
+    const params = fillPlaceholders(this.params, placeholderValues);
+    this.logger.logQuery(this.rawQueryConfig.text, params);
+    return this.queryWithCache(this.queryConfig.text, params, async () => {
+      return await this.client.query(this.queryConfig, params);
+    }).then((result) => result.rows);
   }
   isResponseInArrayMode() {
     return this._isResponseInArrayMode;
   }
 }
 
-class NeonHttpSession extends PgSession {
+class NeonSession extends PgSession {
   constructor(client, dialect, schema, options = {}) {
     super(dialect);
     this.client = client;
     this.schema = schema;
     this.options = options;
-    this.clientQuery = client.query ?? client;
     this.logger = options.logger ?? new NoopLogger;
     this.cache = options.cache ?? new NoopCache;
   }
-  static [entityKind] = "NeonHttpSession";
-  clientQuery;
+  static [entityKind] = "NeonSession";
   logger;
   cache;
   prepareQuery(query, fields, name, isResponseInArrayMode, customResultMapper, queryMetadata, cacheConfig) {
-    return new NeonHttpPreparedQuery(this.client, query, this.logger, this.cache, queryMetadata, cacheConfig, fields, isResponseInArrayMode, customResultMapper);
-  }
-  async batch(queries) {
-    const preparedQueries = [];
-    const builtQueries = [];
-    for (const query of queries) {
-      const preparedQuery = query._prepare();
-      const builtQuery = preparedQuery.getQuery();
-      preparedQueries.push(preparedQuery);
-      builtQueries.push(this.clientQuery(builtQuery.sql, builtQuery.params, {
-        fullResults: true,
-        arrayMode: preparedQuery.isResponseInArrayMode()
-      }));
-    }
-    const batchResults = await this.client.transaction(builtQueries, queryConfig);
-    return batchResults.map((result, i) => preparedQueries[i].mapResult(result, true));
+    return new NeonPreparedQuery(this.client, query.sql, query.params, this.logger, this.cache, queryMetadata, cacheConfig, fields, name, isResponseInArrayMode, customResultMapper);
   }
   async query(query, params) {
     this.logger.logQuery(query, params);
-    const result = await this.clientQuery(query, params, { arrayMode: true, fullResults: true });
+    const result = await this.client.query({
+      rowMode: "array",
+      text: query,
+      values: params
+    });
     return result;
   }
   async queryObjects(query, params) {
-    return this.clientQuery(query, params, { arrayMode: false, fullResults: true });
+    return this.client.query(query, params);
   }
-  async count(sql2, token) {
-    const res = await this.execute(sql2, token);
+  async count(sql2) {
+    const res = await this.execute(sql2);
     return Number(res["rows"][0]["count"]);
   }
-  async transaction(_transaction, _config = {}) {
-    throw new Error("No transactions support in neon-http driver");
+  async transaction(transaction, config2 = {}) {
+    const session = this.client instanceof Mn ? new NeonSession(await this.client.connect(), this.dialect, this.schema, this.options) : this;
+    const tx = new NeonTransaction(this.dialect, session, this.schema);
+    await tx.execute(sql`begin ${tx.getTransactionConfigSQL(config2)}`);
+    try {
+      const result = await transaction(tx);
+      await tx.execute(sql`commit`);
+      return result;
+    } catch (error48) {
+      await tx.execute(sql`rollback`);
+      throw error48;
+    } finally {
+      if (this.client instanceof Mn) {
+        session.client.release();
+      }
+    }
   }
 }
 
-// node_modules/drizzle-orm/neon-http/driver.js
-class NeonHttpDriver {
+class NeonTransaction extends PgTransaction {
+  static [entityKind] = "NeonTransaction";
+  async transaction(transaction) {
+    const savepointName = `sp${this.nestedIndex + 1}`;
+    const tx = new NeonTransaction(this.dialect, this.session, this.schema, this.nestedIndex + 1);
+    await tx.execute(sql.raw(`savepoint ${savepointName}`));
+    try {
+      const result = await transaction(tx);
+      await tx.execute(sql.raw(`release savepoint ${savepointName}`));
+      return result;
+    } catch (e) {
+      await tx.execute(sql.raw(`rollback to savepoint ${savepointName}`));
+      throw e;
+    }
+  }
+}
+
+// node_modules/drizzle-orm/neon-serverless/driver.js
+class NeonDriver {
   constructor(client, dialect, options = {}) {
     this.client = client;
     this.dialect = dialect;
     this.options = options;
-    this.initMappers();
   }
-  static [entityKind] = "NeonHttpDriver";
+  static [entityKind] = "NeonDriver";
   createSession(schema) {
-    return new NeonHttpSession(this.client, this.dialect, schema, {
+    return new NeonSession(this.client, this.dialect, schema, {
       logger: this.options.logger,
       cache: this.options.cache
     });
   }
-  initMappers() {
-    export_types.setTypeParser(export_types.builtins.TIMESTAMPTZ, (val) => val);
-    export_types.setTypeParser(export_types.builtins.TIMESTAMP, (val) => val);
-    export_types.setTypeParser(export_types.builtins.DATE, (val) => val);
-    export_types.setTypeParser(export_types.builtins.INTERVAL, (val) => val);
-    export_types.setTypeParser(1231, (val) => val);
-    export_types.setTypeParser(1115, (val) => val);
-    export_types.setTypeParser(1185, (val) => val);
-    export_types.setTypeParser(1187, (val) => val);
-    export_types.setTypeParser(1182, (val) => val);
-  }
-}
-function wrap(target, token, cb, deep) {
-  return new Proxy(target, {
-    get(target2, p2) {
-      const element = target2[p2];
-      if (typeof element !== "function" && (typeof element !== "object" || element === null))
-        return element;
-      if (deep)
-        return wrap(element, token, cb);
-      if (p2 === "query")
-        return wrap(element, token, cb, true);
-      return new Proxy(element, {
-        apply(target3, thisArg, argArray) {
-          const res = target3.call(thisArg, ...argArray);
-          if (typeof res === "object" && res !== null && "setToken" in res && typeof res.setToken === "function") {
-            res.setToken(token);
-          }
-          return cb(target3, p2, res);
-        }
-      });
-    }
-  });
 }
 
-class NeonHttpDatabase extends PgDatabase {
-  static [entityKind] = "NeonHttpDatabase";
-  $withAuth(token) {
-    this.authToken = token;
-    return wrap(this, token, (target, p2, res) => {
-      if (p2 === "with") {
-        return wrap(res, token, (_, __, res2) => res2);
-      }
-      return res;
-    });
-  }
-  async batch(batch) {
-    return this.session.batch(batch);
-  }
+class NeonDatabase extends PgDatabase {
+  static [entityKind] = "NeonServerlessDatabase";
 }
 function construct(client, config2 = {}) {
   const dialect = new PgDialect({ casing: config2.casing });
@@ -43001,9 +43059,9 @@ function construct(client, config2 = {}) {
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NeonHttpDriver(client, dialect, { logger, cache: config2.cache });
+  const driver = new NeonDriver(client, dialect, { logger, cache: config2.cache });
   const session = driver.createSession(schema);
-  const db = new NeonHttpDatabase(dialect, session, schema);
+  const db = new NeonDatabase(dialect, session, schema);
   db.$client = client;
   db.$cache = config2.cache;
   if (db.$cache) {
@@ -43013,19 +43071,21 @@ function construct(client, config2 = {}) {
 }
 function drizzle(...params) {
   if (typeof params[0] === "string") {
-    const instance = cs(params[0]);
+    const instance = new Mn({
+      connectionString: params[0]
+    });
     return construct(instance, params[1]);
   }
   if (isConfig(params[0])) {
-    const { connection, client, ...drizzleConfig } = params[0];
+    const { connection, client, ws, ...drizzleConfig } = params[0];
+    if (ws) {
+      ce.webSocketConstructor = ws;
+    }
     if (client)
       return construct(client, drizzleConfig);
-    if (typeof connection === "object") {
-      const { connectionString, ...options } = connection;
-      const instance2 = cs(connectionString, options);
-      return construct(instance2, drizzleConfig);
-    }
-    const instance = cs(connection);
+    const instance = typeof connection === "string" ? new Mn({
+      connectionString: connection
+    }) : new Mn(connection);
     return construct(instance, drizzleConfig);
   }
   return construct(params[0], params[1]);
@@ -43038,8 +43098,8 @@ function drizzle(...params) {
 })(drizzle || (drizzle = {}));
 
 // src/db/index.ts
-var sql2 = cs(process.env.DATABASE_URL);
-var db = drizzle(sql2, { schema: exports_schema });
+var pool = new Mn({ connectionString: process.env.DATABASE_URL });
+var db = drizzle(pool, { schema: exports_schema });
 
 // src/middleware/auth.ts
 var authMiddleware = async (c, next) => {
