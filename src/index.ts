@@ -9,7 +9,7 @@ import product from "./routes/product-route"
 const app = new OpenAPIHono()
 
 app.use('*', cors({
-    origin: 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     allowHeaders: ['Content-Type', 'Authorization'],
     allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
