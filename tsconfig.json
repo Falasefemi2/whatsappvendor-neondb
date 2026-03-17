@@ -1,15 +1,14 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "strict": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "outDir": "dist",
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "noEmitOnError": false
+    "esModuleInterop": true
   },
   "include": ["src", "api"]
 }
