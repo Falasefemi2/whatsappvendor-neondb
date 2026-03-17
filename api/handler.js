@@ -50089,9 +50089,10 @@ auth.openapi(createRoute({
     setCookie(c, "token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "Lax",
+      sameSite: "None",
       maxAge: 60 * 60 * 24 * 7
     });
+    console.log("Cookie set with SameSite: None");
     return c.json({ message: "Login successful", user }, 200);
   } catch (error48) {
     return c.json({ message: error48.message || "Login failed" }, 401);

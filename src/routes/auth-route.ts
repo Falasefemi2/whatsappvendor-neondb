@@ -122,6 +122,7 @@ auth.openapi(
                 sameSite: "None",
                 maxAge: 60 * 60 * 24 * 7
             })
+            console.log("Cookie set with SameSite: None")
             return c.json({ message: "Login successful", user }, 200)
         } catch (error: any) {
             return c.json({ message: error.message || "Login failed" }, 401)
