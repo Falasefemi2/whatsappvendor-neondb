@@ -1,13 +1,13 @@
 import { Resend } from "resend"
 
-const resend = new Resend(Bun.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const sendApprovalPendingEmail = async (
     name: string,
     email: string,
     slug: string
 ) => {
-    const storeUrl = `${Bun.env.FRONTEND_URL}/stores/${slug}`
+    const storeUrl = `${process.env.FRONTEND_URL}/stores/${slug}`
 
     await resend.emails.send({
         from: "onboarding@resend.dev",
@@ -41,7 +41,7 @@ export const sendApprovalEmail = async (
     email: string,
     slug: string
 ) => {
-    const storeUrl = `${Bun.env.FRONTEND_URL}/stores/${slug}`
+    const storeUrl = `${process.env.FRONTEND_URL}/stores/${slug}`
 
     await resend.emails.send({
         from: "onboarding@resend.dev",

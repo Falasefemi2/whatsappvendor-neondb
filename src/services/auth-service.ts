@@ -3,6 +3,7 @@ import { db } from "../db";
 import { users, vendors } from "../db/schema";
 import { sendApprovalEmail, sendApprovalPendingEmail } from "../lib/mailer";
 import { sign } from "hono/jwt";
+import bcrypt from 'bcryptjs'
 
 interface RegisterPayload {
     name: string;
@@ -28,7 +29,7 @@ const checkEmailExists = async (email: string) => {
 }
 
 const hashPassword = async (password: string) => {
-    return await Bun.password.hash(password);
+    return await bcrypt.hash(password, 10);
 }
 
 export const registerVendor = async (payload: RegisterPayload) => {
@@ -66,14 +67,14 @@ export const loginVendor = async (email: string, password: string) => {
     })
     if (!user) throw new Error("Invalid credentials")
 
-    const validPassword = await Bun.password.verify(password, user.passwordHash)
+    const validPassword = await bcrypt.compare(password, user.passwordHash)
     if (!validPassword) throw new Error("Invalid credentials")
     if (user.role !== "admin" && !user.vendor?.approved) {
         throw new Error("Account pending approval")
     }
     const token = await sign(
         { userId: user.id, role: user.role },
-        Bun.env.JWT_SECRET!,
+        process.env.JWT_SECRET!,
         "HS256"
     )
 

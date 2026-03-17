@@ -10,7 +10,7 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
     const token = getCookie(c, "token")
     if (!token) return c.json({ message: "Unauthorized" }, 401)
 
-    const payload = await verify(token, Bun.env.JWT_SECRET!, "HS256")
+    const payload = await verify(token, process.env.JWT_SECRET!, "HS256")
     if (!payload) return c.json({ message: "Unauthorized" }, 401)
 
     const user = await db.query.users.findFirst({

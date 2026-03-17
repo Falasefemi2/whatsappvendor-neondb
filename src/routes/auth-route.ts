@@ -166,7 +166,7 @@ auth.openapi(
             const token = getCookie(c, "token")
             if (!token) return c.json({ message: "Unauthorized" }, 401)
 
-            const payload = await verify(token, Bun.env.JWT_SECRET!, "HS256")
+            const payload = await verify(token, process.env.JWT_SECRET!, "HS256")
             const user = await getCurrentUser(payload.userId as string)
 
             return c.json({ user }, 200)
