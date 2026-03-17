@@ -1,6 +1,6 @@
 {
   "version": 2,
   "installCommand": "bun install",
-  "buildCommand": "bun build ./api/index.ts --outdir ./api --out-file handler.js --target node",
+  "buildCommand": "bun build ./api/index.ts --outfile ./api/handler.js --target node",
   "rewrites": [{ "source": "/(.*)", "destination": "/api/handler" }]
 }
