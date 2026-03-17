@@ -53024,7 +53024,10 @@ var product_route_default = product;
 // src/index.ts
 var app = new OpenAPIHono;
 app.use("*", cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: (origin) => {
+    const allowed = process.env.FRONTEND_URL || "http://localhost:5173";
+    return origin === allowed ? origin : null;
+  },
   allowHeaders: ["Content-Type", "Authorization"],
   allowMethods: ["POST", "GET", "OPTIONS", "PUT", "DELETE", "PATCH"],
   credentials: true
