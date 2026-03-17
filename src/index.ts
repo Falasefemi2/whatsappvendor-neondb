@@ -11,6 +11,7 @@ const app = new OpenAPIHono()
 app.use('*', cors({
     origin: (origin) => {
         const allowed = process.env.FRONTEND_URL || 'http://localhost:5173'
+        if (!origin) return allowed
         return origin === allowed ? origin : null
     },
     allowHeaders: ['Content-Type', 'Authorization'],
@@ -36,7 +37,7 @@ app.doc("/doc", {
         version: "1.0.0",
         description: "Vendor marketplace API"
     },
-    servers: [{ url: "http://localhost:3000" }]
+    servers: [{ url: process.env.API_URL || "http://localhost:3000" }]
 })
 
 app.get("/scalar", Scalar({ url: "/doc", theme: "purple" }))
